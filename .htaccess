@@ -1,0 +1,5 @@
+RewriteEngine On
+RewriteBase /
+
+# Forward all requests to the api/v1 directory
+RewriteRule ^api/v1/(.*)$ api/v1/$1 [QSA,L] 

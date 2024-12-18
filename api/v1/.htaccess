@@ -1,0 +1,57 @@
+RewriteEngine On
+RewriteBase /api/v1/
+
+# Add proper MIME type for JSON files
+AddType application/json .json
+
+# Handle documentation endpoint first
+RewriteRule ^docs/?$ documentation.php [NC,L]
+
+# Allow direct access to openapi.json and documentation.php
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^(openapi\.json|documentation\.php)$ - [L]
+
+# If the request is not for a file or directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Handle OPTIONS method for CORS
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Rewrite all requests to the corresponding PHP file
+RewriteRule ^auth/login$ auth/login.php [QSA,L]
+RewriteRule ^auth/register$ auth/register.php [QSA,L]
+RewriteRule ^products$ products/index.php [QSA,L]
+RewriteRule ^products/([^/]+)$ products/detail.php?slug=$1 [QSA,L]
+RewriteRule ^categories$ categories/index.php [QSA,L]
+RewriteRule ^brands$ brands/index.php [QSA,L]
+RewriteRule ^brands/([^/]+)$ brands/detail.php?slug=$1 [QSA,L]
+RewriteRule ^cart$ cart/index.php [QSA,L]
+RewriteRule ^cart/add$ cart/add.php [QSA,L]
+RewriteRule ^cart/update$ cart/update.php [QSA,L]
+RewriteRule ^cart/remove$ cart/remove.php [QSA,L]
+RewriteRule ^orders$ orders/index.php [QSA,L]
+RewriteRule ^orders/create$ orders/create.php [QSA,L]
+RewriteRule ^user/addresses$ user/addresses.php [QSA,L]
+RewriteRule ^user/addresses/create$ user/addresses/create.php [QSA,L]
+RewriteRule ^user/addresses/update$ user/addresses/update.php [QSA,L]
+RewriteRule ^user/addresses/delete$ user/addresses/delete.php [QSA,L]
+RewriteRule ^orders/([0-9]+)$ orders/detail.php?id=$1 [QSA,L]
+RewriteRule ^orders/([0-9]+)/upload-payment$ orders/upload-payment.php?id=$1 [QSA,L]
+RewriteRule ^user/profile$ user/profile.php [QSA,L]
+RewriteRule ^user/profile/update$ user/profile/update.php [QSA,L]
+RewriteRule ^user/profile/password$ user/profile/password.php [QSA,L]
+RewriteRule ^orders/([0-9]+)/cancel$ orders/cancel.php?id=$1 [QSA,L]
+RewriteRule ^orders/([0-9]+)/refund$ orders/refund.php?id=$1 [QSA,L]
+RewriteRule ^admin/orders$ admin/orders/index.php [QSA,L]
+RewriteRule ^admin/orders/([0-9]+)/status$ admin/orders/update-status.php?id=$1 [QSA,L]
+RewriteRule ^admin/orders/([0-9]+)/verify-payment$ admin/orders/verify-payment.php?id=$1 [QSA,L]
+RewriteRule ^admin/products$ admin/products/index.php [QSA,L]
+RewriteRule ^admin/products/create$ admin/products/create.php [QSA,L]
+RewriteRule ^admin/products/([0-9]+)$ admin/products/update.php?id=$1 [QSA,L]
+RewriteRule ^admin/products/([0-9]+)/delete$ admin/products/delete.php?id=$1 [QSA,L]
+RewriteRule ^admin/categories$ admin/categories/index.php [QSA,L]
+RewriteRule ^admin/categories/create$ admin/categories/create.php [QSA,L]
+RewriteRule ^admin/categories/([0-9]+)$ admin/categories/update.php?id=$1 [QSA,L]
+RewriteRule ^admin/categories/([0-9]+)/delete$ admin/categories/delete.php?id=$1 [QSA,L]
