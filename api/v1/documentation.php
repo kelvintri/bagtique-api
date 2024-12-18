@@ -13,9 +13,14 @@ header('Content-Type: text/html');
     <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-bundle.js"></script>
     <script>
         window.onload = function() {
-            const basePath = window.location.pathname.replace(/\/$/, '').replace('/docs', '');
+            // Get the base path regardless of how the page is accessed
+            const path = window.location.pathname;
+            const apiPath = path.includes('/docs') 
+                ? path.replace('/docs', '') 
+                : path.replace('/documentation.php', '');
+                
             const ui = SwaggerUIBundle({
-                url: `${basePath}/openapi.json`,
+                url: `${apiPath}/openapi.json`,
                 dom_id: '#swagger-ui',
                 deepLinking: true,
                 presets: [

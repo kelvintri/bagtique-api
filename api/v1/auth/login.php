@@ -4,6 +4,8 @@ error_log('Request method: ' . $_SERVER['REQUEST_METHOD']);
 error_log('Raw input: ' . file_get_contents('php://input'));
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../../../vendor/autoload.php';
+use Firebase\JWT\JWT;
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: http://bananina.test');
@@ -87,8 +89,26 @@ try {
     unset($user['password']);
     $user['roles'] = $roleArray;
     
+    // After successful password verification, generate JWT token
+    $secret_key = "your-secret-key-here"; // Store this securely in environment variables
+    $issued_at = time();
+    $expiration = $issued_at + (60 * 60); // Token expires in 1 hour
+    
+    $payload = array(
+        "iat" => $issued_at,
+        "exp" => $expiration,
+        "user" => [
+            "id" => $user['id'],
+            "email" => $user['email'],
+            "roles" => $roleArray
+        ]
+    );
+    
+    $jwt = JWT::encode($payload, $secret_key, 'HS256');
+    
     echo json_encode([
         'success' => true,
+        'token' => $jwt,
         'user' => [
             'id' => $user['id'],
             'email' => $user['email'],
