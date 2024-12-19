@@ -84,10 +84,10 @@
             "type": "string",
             "description": "Unique product SKU"
           },
-          "condition_status": {
+          "condition": {
             "type": "string",
             "enum": ["New With Tag", "New", "Like New", "Used"],
-            "default": "New With Tag"
+            "description": "Product condition"
           },
           "is_active": {
             "type": "boolean",
@@ -417,26 +417,6 @@
             }
           }
         }
-      },
-      "post": {
-        "tags": ["Admin Products"],
-        "summary": "Create a new product",
-        "security": [{ "bearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProductInput"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Product created successfully"
-          }
-        }
       }
     },
     "/admin/products/create": {
@@ -462,34 +442,7 @@
       }
     },
     "/admin/products/{id}": {
-      "get": {
-        "tags": ["Admin Products"],
-        "summary": "Get product details",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Product details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Product" 
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/products/{id}/update": {
-      "post": {
+      "put": {
         "tags": ["Admin Products"],
         "summary": "Update a product",
         "security": [{ "bearerAuth": [] }],

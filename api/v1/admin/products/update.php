@@ -1,5 +1,6 @@
 <?php
 error_log('=== Admin Update Product API Request ===');
+require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../middleware/auth.php';
 require_once __DIR__ . '/../../middleware/admin.php';
@@ -13,7 +14,7 @@ try {
     // CORS Headers
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: http://bananina.test');
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
+    header('Access-Control-Allow-Methods: PUT, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization');
     header('Access-Control-Allow-Credentials: true');
 
@@ -22,7 +23,7 @@ try {
         exit;
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
         throw new Exception('Method not allowed', 405);
     }
 
@@ -35,35 +36,23 @@ try {
         throw new Exception('Invalid product ID', 400);
     }
 
-    // Get and validate input
-    $data = [];
+    // Get JSON input
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
 
-    // Parse raw input for PUT requests
-    $raw_input = file_get_contents("php://input");
-    $input_data = json_decode($raw_input, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Invalid JSON data');
+    }
 
-    // Debug raw input
-    error_log('Raw input: ' . $raw_input);
-    error_log('Decoded data: ' . print_r($input_data, true));
-
-    // Get data from input
-    $data['name'] = $input_data['name'] ?? null;
-    $data['category_id'] = $input_data['category_id'] ?? null;
-    $data['brand_id'] = $input_data['brand_id'] ?? null;
-    $data['description'] = $input_data['description'] ?? null;
-    $data['details'] = $input_data['details'] ?? null;
-    $data['price'] = $input_data['price'] ?? null;
-    $data['sale_price'] = isset($input_data['sale_price']) && $input_data['sale_price'] !== null ? $input_data['sale_price'] : null;
-    $data['stock'] = $input_data['stock'] ?? null;
-    $data['sku'] = $input_data['sku'] ?? null;
-    $data['condition_status'] = $input_data['condition'] ?? 'New With Tag';
-    $data['is_active'] = $input_data['is_active'] ?? true;
-
-    // Handle images if provided in the request
-    $data['images'] = $input_data['images'] ?? [];
+    // Map condition to condition_status if needed
+    if (isset($data['condition'])) {
+        $data['condition_status'] = $data['condition'];
+        unset($data['condition']);
+    }
 
     // Debug logging
-    error_log('Processed data: ' . print_r($data, true));
+    error_log('Raw input: ' . $json);
+    error_log('Decoded data: ' . print_r($data, true));
 
     // Validate required fields
     $required_fields = [
@@ -81,6 +70,12 @@ try {
         }
     }
 
+    // Validate condition_status
+    $valid_conditions = ['New With Tag', 'New', 'Like New', 'Used'];
+    if (!in_array($data['condition_status'], $valid_conditions)) {
+        throw new Exception('Invalid condition status. Must be one of: ' . implode(', ', $valid_conditions));
+    }
+
     // Validate numeric fields
     if (!is_numeric($data['price']) || $data['price'] < 0) {
         throw new Exception('Invalid price', 400);
@@ -90,7 +85,7 @@ try {
         throw new Exception('Stock must be a whole number', 400);
     }
 
-    if (isset($data['sale_price']) && $data['sale_price'] !== null && $data['sale_price'] !== '') {
+    if (isset($data['sale_price']) && $data['sale_price'] !== null) {
         if (!is_numeric($data['sale_price']) || $data['sale_price'] < 0) {
             throw new Exception('Invalid sale price', 400);
         }
