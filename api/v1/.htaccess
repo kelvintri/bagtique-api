@@ -4,6 +4,12 @@ RewriteBase /api/v1/
 # Add proper MIME type for JSON files
 AddType application/json .json
 
+# Handle CORS
+Header set Access-Control-Allow-Origin "http://bananina.test"
+Header set Access-Control-Allow-Credentials "true"
+Header set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+
 # Handle documentation endpoint first
 RewriteRule ^docs/?$ documentation.php [NC,L]
 
@@ -49,7 +55,8 @@ RewriteRule ^admin/orders/([0-9]+)/status$ admin/orders/update-status.php?id=$1 
 RewriteRule ^admin/orders/([0-9]+)/verify-payment$ admin/orders/verify-payment.php?id=$1 [QSA,L]
 RewriteRule ^admin/products$ admin/products/index.php [QSA,L]
 RewriteRule ^admin/products/create$ admin/products/create.php [QSA,L]
-RewriteRule ^admin/products/([0-9]+)$ admin/products/update.php?id=$1 [QSA,L]
+RewriteRule ^admin/products/([0-9]+)$ admin/products/get.php?id=$1 [QSA,L]
+RewriteRule ^admin/products/([0-9]+)/update$ admin/products/update.php?id=$1 [QSA,L]
 RewriteRule ^admin/products/([0-9]+)/delete$ admin/products/delete.php?id=$1 [QSA,L]
 RewriteRule ^admin/categories$ admin/categories/index.php [QSA,L]
 RewriteRule ^admin/categories/create$ admin/categories/create.php [QSA,L]

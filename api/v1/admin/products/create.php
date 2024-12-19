@@ -1,5 +1,6 @@
 <?php
 error_log('=== Admin Create Product API Request ===');
+require_once __DIR__ . '/../../config/constants.php';
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../middleware/auth.php';
 require_once __DIR__ . '/../../middleware/admin.php';
@@ -13,10 +14,11 @@ try {
     // CORS Headers
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: http://bananina.test');
-    header('Access-Control-Allow-Methods: POST');
-    header('Access-Control-Allow-Headers: Content-Type');
+    header('Access-Control-Allow-Methods: POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
     header('Access-Control-Allow-Credentials: true');
 
+    // Handle preflight OPTIONS request
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         http_response_code(200);
         exit;
@@ -29,40 +31,13 @@ try {
     // Require admin authentication
     AdminMiddleware::authenticate();
 
-    // Get and validate input
-    $data = [];
-    $data['name'] = $_POST['name'] ?? null;
-    $data['category_id'] = $_POST['category_id'] ?? null;
-    $data['brand_id'] = $_POST['brand_id'] ?? null;
-    $data['description'] = $_POST['description'] ?? null;
-    $data['details'] = $_POST['details'] ?? null;
-    $data['price'] = $_POST['price'] ?? null;
-    $data['sale_price'] = isset($_POST['sale_price']) && $_POST['sale_price'] !== 'null' ? $_POST['sale_price'] : null;
-    $data['stock'] = $_POST['stock'] ?? null;
-    $data['sku'] = $_POST['sku'] ?? null;
-    $data['condition_status'] = $_POST['condition_status'] ?? 'New With Tag';
-    $data['is_active'] = $_POST['is_active'] ?? '1';
+    // Get JSON input
+    $json = file_get_contents('php://input');
+    $data = json_decode($json, true);
 
-    // Handle file uploads
-    $data['images'] = [];
-    if (isset($_FILES['images'])) {
-        foreach ($_FILES['images']['tmp_name'] as $index => $tmp_name) {
-            if (!empty($tmp_name)) {
-                $data['images'][] = [
-                    'file' => $_FILES['images']['tmp_name'][$index],
-                    'name' => $_FILES['images']['name'][$index],
-                    'type' => $_FILES['images']['type'][$index],
-                    'is_primary' => $_POST['images'][$index]['is_primary'] ?? '0',
-                    'sort_order' => $_POST['images'][$index]['sort_order'] ?? $index
-                ];
-            }
-        }
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Invalid JSON data');
     }
-
-    // Debug logging
-    error_log('Received POST data: ' . print_r($_POST, true));
-    error_log('Received FILES data: ' . print_r($_FILES, true));
-    error_log('Processed data: ' . print_r($data, true));
 
     // Validate required fields
     $required_fields = [
@@ -77,6 +52,22 @@ try {
     foreach ($required_fields as $field => $message) {
         if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
             throw new Exception($message, 400);
+        }
+    }
+
+    // Validate images if provided
+    if (isset($data['images']) && !empty($data['images'])) {
+        foreach ($data['images'] as $image) {
+            if (!isset($image['data']) || !isset($image['type'])) {
+                throw new Exception('Image data and type are required');
+            }
+            if (!in_array($image['type'], ['image/jpeg', 'image/png', 'image/webp'])) {
+                throw new Exception('Invalid image type. Supported types: JPEG, PNG, WebP');
+            }
+            // Validate base64
+            if (!preg_match('/^data:image\/(\w+);base64,/', $image['data'])) {
+                throw new Exception('Invalid image data format');
+            }
         }
     }
 
@@ -221,51 +212,50 @@ try {
         $category = $stmt->fetch(PDO::FETCH_ASSOC);
         $category_slug = $category['slug'];
 
-        // Handle images if provided
-        if (isset($data['images']) && is_array($data['images'])) {
+        // Process images
+        if (isset($data['images'])) {
             foreach ($data['images'] as $index => $image) {
-                // Get file info
-                $file_info = pathinfo($image['name']['file']);
-                $extension = strtolower($file_info['extension']);
+                // Extract actual base64 data
+                $base64_data = preg_replace('/^data:image\/\w+;base64,/', '', $image['data']);
+                $image_data = base64_decode($base64_data);
                 
-                // Generate unique filename
+                if ($image_data === false) {
+                    throw new Exception('Invalid base64 image data');
+                }
+
+                // Generate filename and save image
+                $extension = explode('/', $image['type'])[1];
                 $filename = $slug . '-' . uniqid() . '.' . $extension;
                 
-                // Determine directory based on image type
-                $type_dir = $image['is_primary'] == '1' ? 'primary' : 'hover';
+                $type_dir = !empty($image['is_primary']) ? 'primary' : 'hover';
                 $target_dir = ROOT_PATH . "/public/assets/images/{$category_slug}/{$type_dir}/";
                 
-                // Create directories if they don't exist
                 if (!file_exists($target_dir)) {
                     mkdir($target_dir, 0777, true);
                 }
                 
-                // Move uploaded file to appropriate directory
                 $target_path = $target_dir . $filename;
-                $source_path = $image['file']['file']; // This is the temporary file path
                 
-                if (move_uploaded_file($source_path, $target_path)) {
-                    // Generate public URL
-                    $public_url = "/assets/images/{$category_slug}/{$type_dir}/" . $filename;
-                    
-                    // Insert into database
-                    $stmt = $conn->prepare("
-                        INSERT INTO product_galleries (
-                            product_id,
-                            image_url,
-                            is_primary,
-                            sort_order
-                        ) VALUES (?, ?, ?, ?)
-                    ");
-                    $stmt->execute([
-                        $product_id,
-                        $public_url,
-                        $image['is_primary'],
-                        $image['sort_order']
-                    ]);
-                } else {
-                    throw new Exception('Failed to move image file: ' . error_get_last()['message']);
+                if (!file_put_contents($target_path, $image_data)) {
+                    throw new Exception('Failed to save image');
                 }
+
+                // Save to database
+                $public_url = "/assets/images/{$category_slug}/{$type_dir}/" . $filename;
+                $stmt = $conn->prepare("
+                    INSERT INTO product_galleries (
+                        product_id,
+                        image_url,
+                        is_primary,
+                        sort_order
+                    ) VALUES (?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $product_id,
+                    $public_url,
+                    !empty($image['is_primary']),
+                    $image['sort_order'] ?? $index
+                ]);
             }
         }
 
@@ -307,6 +297,7 @@ try {
         ], true));
 
         // Format response
+        http_response_code(201);
         echo json_encode([
             'success' => true,
             'message' => sprintf(

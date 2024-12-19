@@ -13,7 +13,7 @@ try {
     // CORS Headers
     header('Content-Type: application/json');
     header('Access-Control-Allow-Origin: http://bananina.test');
-    header('Access-Control-Allow-Methods: PUT, OPTIONS');
+    header('Access-Control-Allow-Methods: POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization');
     header('Access-Control-Allow-Credentials: true');
 
@@ -22,7 +22,7 @@ try {
         exit;
     }
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Method not allowed', 405);
     }
 
